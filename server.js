@@ -7,7 +7,8 @@ const MAX = parseInt(process.env.MAX_SLOTS || '12', 10);      // kitni teams ka 
 const PASS = process.env.ADMIN_PASSWORD || 'changeme';          // admin password (zaroor badlo)
 const HOOK = process.env.DISCORD_WEBHOOK || '';                 // optional: Discord notification
 const LOOKUP_URL = process.env.LOOKUP_URL || '';               // e.g. https://your-lookup/check?game=freefire&id={uid}
-const LOOKUP_FIELD = process.env.LOOKUP_FIELD || 'nickname';   // response mein name ka path, e.g. data.nickname
+const LOOKUP_FIELD = process.env.LOOKUP_FIELD || '';           // optional: name ka path (e.g. data.nickname). Khali = auto-detect 'nickname'
+const LOOKUP_API_KEY = process.env.LOOKUP_API_KEY || '';       // optional: x-api-key header (Free Fire API Hub)
 const LOOKUP_REQUIRED = process.env.LOOKUP_REQUIRED === '1';   // 1 = verified name ke bina register nahi
 const FILE = path.join(__dirname, 'data.json');
 
@@ -22,10 +23,18 @@ async function lookupName(uid) {
   if (c && Date.now() - c.t < 600e3) return c.name;
   const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 6000);
   try {
-    const r = await fetch(LOOKUP_URL.replace('{uid}', encodeURIComponent(uid)), { signal: ctl.signal });
+    const headers = { 'User-Agent': 'FFTournamentSite/1.0 (registration website)', 'Accept': 'application/json' };
+    if (LOOKUP_API_KEY) headers['x-api-key'] = LOOKUP_API_KEY;
+    const r = await fetch(LOOKUP_URL.replace('{uid}', encodeURIComponent(uid)), { signal: ctl.signal, headers });
     if (!r.ok) return null;
     const j = await r.json();
-    let name = LOOKUP_FIELD.split('.').reduce((o, k) => (o == null ? o : o[k]), j);
+    const find = (o, d = 0) => {           // JSON mein pehla 'nickname' key dhoondho
+      if (!o || typeof o !== 'object' || d > 5) return null;
+      for (const k of Object.keys(o)) if (/^(nick_?name|name)$/i.test(k) && typeof o[k] === 'string' && o[k].trim()) return o[k];
+      for (const k of Object.keys(o)) { const v = find(o[k], d + 1); if (v) return v; }
+      return null;
+    };
+    let name = LOOKUP_FIELD ? LOOKUP_FIELD.split('.').reduce((o, k) => (o == null ? o : o[k]), j) : find(j);
     if (typeof name !== 'string' || !name.trim()) return null;
     name = name.trim().slice(0, 30);
     nameCache.set(uid, { name, t: Date.now() });
@@ -103,3 +112,4 @@ app.get('/api/admin', (req, res) => {
 });
 
 app.listen(PORT, () => console.log('Running on http://localhost:' + PORT));
+      
