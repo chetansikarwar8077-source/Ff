@@ -29,7 +29,7 @@ async function lookupName(uid, region) {
   try {
     const headers = { 'User-Agent': 'FFTournamentSite/1.0 (registration website)', 'Accept': 'application/json' };
     if (LOOKUP_API_KEY) headers['x-api-key'] = LOOKUP_API_KEY;
-    const url = LOOKUP_URL.replace('{uid}', encodeURIComponent(uid)).replace('{region}', encodeURIComponent(region));
+    const url = LOOKUP_URL.replace('{uid}', encodeURIComponent(uid)).replace('{region}', encodeURIComponent(region)).replace('{REGION}', encodeURIComponent(region.toUpperCase()));
     const r = await fetch(url, { signal: ctl.signal, headers });
     if (!r.ok) return null;
     const j = await r.json();
