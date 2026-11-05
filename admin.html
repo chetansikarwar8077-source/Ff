@@ -15,10 +15,11 @@ th,td{text-align:left;padding:7px 10px;border-bottom:1px solid #2c2c34;white-spa
 <div id="login"><input id="pw" type="password" placeholder="Admin password"> <button id="go">Login</button></div>
 <div id="panel" style="display:none">
   <button id="csv">CSV download</button> <span id="count"></span>
-  <div class="wrap"><table><thead><tr><th>Slot</th><th>Team</th><th>Leader</th><th>Verified</th><th>UID</th><th>WhatsApp</th><th>Players</th><th>Time</th></tr></thead><tbody id="rows"></tbody></table></div>
+  <div class="wrap"><table><thead><tr><th>Slot</th><th>Team</th><th>Leader</th><th>Verified</th><th>UID</th><th>WhatsApp</th><th>Teammates</th><th>Time</th></tr></thead><tbody id="rows"></tbody></table></div>
 </div>
 <script>
 let data=[], max=12;
+const fmt=x=>(x.mates&&x.mates.length)?x.mates.map(m=>m.name+' ('+m.uid+')').join(', '):(x.others||'').replace(/\n/g,', ');
 document.getElementById('go').onclick = load;
 async function load(){
   const r = await fetch('/api/admin',{headers:{'x-admin-password':document.getElementById('pw').value}});
@@ -30,14 +31,14 @@ async function load(){
   const tb=document.getElementById('rows'); tb.innerHTML='';
   data.forEach(x=>{
     const tr=document.createElement('tr'); if(x.slot>max) tr.className='wl';
-    [x.slot,x.team,x.leader,x.verified?'✅':'-',x.uid,x.phone,(x.others||'').replace(/\n/g,', '),new Date(x.createdAt).toLocaleString()]
+    [x.slot,x.team,x.leader,x.verified?'✅':'-',x.uid,x.phone,fmt(x),new Date(x.createdAt).toLocaleString()]
       .forEach(v=>{const td=document.createElement('td'); td.textContent=v; tr.appendChild(td);});
     tb.appendChild(tr);
   });
 }
 document.getElementById('csv').onclick = () => {
   const q=s=>'"'+String(s||'').replace(/"/g,'""').replace(/\n/g,' | ')+'"';
-  const rows=['Slot,Team,Leader,UID,WhatsApp,Players,Time'].concat(data.map(x=>[x.slot,x.team,x.leader,x.uid,x.phone,x.others,x.createdAt].map(q).join(',')));
+  const rows=['Slot,Team,Leader,UID,WhatsApp,Players,Time'].concat(data.map(x=>[x.slot,x.team,x.leader,x.uid,x.phone,fmt(x),x.createdAt].map(q).join(',')));
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([rows.join('\n')],{type:'text/csv'}));
   a.download='registrations.csv'; a.click();
 };
