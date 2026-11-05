@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="hi"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Free Fire Tournament Registration</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0f0f13;color:#f2f2f5;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.45}
+main{max-width:520px;margin:0 auto;padding:16px}
+h1{font-size:1.5rem;margin:8px 0 2px}
+.sub{color:#9a9aa6;margin:0 0 16px}
+.card{background:#1b1b20;border:1px solid #2c2c34;border-radius:14px;padding:16px;margin-bottom:14px}
+.stats{display:flex;gap:10px}
+.stat{flex:1;background:#3a2218;border-radius:10px;padding:10px;text-align:center}
+.stat b{display:block;font-size:1.4rem;color:#ff7a45}.stat span{font-size:.75rem;color:#9a9aa6}
+label{display:block;font-size:.85rem;font-weight:600;margin:12px 0 4px}
+input,textarea{width:100%;padding:11px;border:1px solid #2c2c34;border-radius:10px;background:#111114;color:#f2f2f5;font:inherit}
+button{width:100%;margin-top:16px;padding:13px;border:0;border-radius:10px;background:#ff5a1f;color:#fff;font:inherit;font-weight:700;cursor:pointer}
+button:disabled{opacity:.5}
+.slot{text-align:center}.slot .n{font-size:3.2rem;font-weight:800;color:#ff7a45;line-height:1}
+.ok{color:#46d27a;font-weight:700}.err{color:#ff6b6b;font-size:.85rem;margin-top:8px}
+.hide{display:none}.link{color:#ff7a45;cursor:pointer;text-align:center;font-size:.9rem}
+</style></head><body><main>
+<h1>🔥 Free Fire Tournament</h1>
+<p class="sub">Squad register karo aur apna slot number paao.</p>
+
+<div class="card stats">
+  <div class="stat"><b id="sTotal">0</b><span>Registered</span></div>
+  <div class="stat"><b id="sLeft">0</b><span>Slots left</span></div>
+</div>
+
+<div id="result" class="card slot hide"></div>
+
+<div id="formBox" class="card">
+  <label>Team name</label><input id="team" maxlength="30">
+  <label>Leader Free Fire UID</label><input id="uid" inputmode="numeric" maxlength="14">
+  <label>Leader ka naam</label><input id="leader" maxlength="30"><div id="vstat" style="font-size:.8rem;color:#9a9aa6;margin-top:4px"></div>
+  <label>WhatsApp number</label><input id="phone" inputmode="tel" maxlength="15">
+  <label>Baaki players (naam + UID, har line mein ek)</label>
+  <textarea id="others" rows="3" maxlength="300"></textarea>
+  <div id="err" class="err"></div>
+  <button id="submit">Register karo</button>
+</div>
+
+<div class="card">
+  <b>Pehle se register kiya hai?</b>
+  <label>Apna UID daalo</label><input id="chk" inputmode="numeric" maxlength="14">
+  <button id="chkBtn">Mera slot dekho</button>
+</div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+function showSlot(d){
+  $('result').innerHTML = d.waitlist
+    ? '<div class="ok">⏳ Waitlist</div><div class="n">#'+d.slot+'</div><div></div>'
+    : '<div class="ok">✅ Registration ho gaya</div><div class="n">#'+d.slot+'</div><div>Slot number</div>';
+  $('result').lastChild.textContent = d.team + (d.waitlist ? ' · slot khali hone par shift hoge' : '');
+  $('result').classList.remove('hide'); $('formBox').classList.add('hide');
+}
+async function stats(){
+  const s = await (await fetch('/api/stats')).json();
+  $('sTotal').textContent = s.total; $('sLeft').textContent = s.left;
+}
+$('submit').onclick = async () => {
+  $('err').textContent=''; $('submit').disabled=true;
+  const body = {}; ['team','leader','uid','phone','others'].forEach(k=>body[k]=$(k).value);
+  try {
+    const r = await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d = await r.json();
+    if(!r.ok) $('err').textContent = d.error; else { showSlot(d); stats(); }
+  } catch(e){ $('err').textContent='Network error. Dobara try karo.'; }
+  $('submit').disabled=false;
+};
+$('chkBtn').onclick = async () => {
+  const r = await fetch('/api/slot?uid='+encodeURIComponent($('chk').value));
+  const d = await r.json();
+  if(r.ok) showSlot(d); else alert(d.error);
+};
+let lt;
+$('uid').addEventListener('input', () => {
+  clearTimeout(lt);
+  const u = $('uid').value.trim(), L = $('leader'), v = $('vstat');
+  L.readOnly = false; v.textContent = '';
+  if (!/^\d{6,14}$/.test(u)) return;
+  v.textContent = 'Naam dhoondh rahe hain...';
+  lt = setTimeout(async () => {
+    try {
+      const d = await (await fetch('/api/lookup?uid=' + encodeURIComponent(u))).json();
+      if (d.ok) { L.value = d.name; L.readOnly = true; v.textContent = '✅ Verified naam mil gaya'; v.style.color = '#46d27a'; }
+      else { v.style.color = '#9a9aa6'; v.textContent = d.disabled ? '' : 'Naam auto nahi mila, khud likh do.'; }
+    } catch (e) { v.textContent = 'Naam auto nahi mila, khud likh do.'; }
+  }, 500);
+});
+stats();
+</script></body></html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="hi"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin - Registrations</title>
+<style>
+body{margin:0;background:#0f0f13;color:#f2f2f5;font-family:system-ui,sans-serif;padding:16px}
+input,button{padding:10px;border-radius:8px;border:1px solid #2c2c34;font:inherit}
+input{background:#111114;color:#f2f2f5}button{background:#ff5a1f;color:#fff;border:0;cursor:pointer;font-weight:700}
+.wrap{overflow-x:auto;margin-top:14px}
+table{border-collapse:collapse;width:100%;font-size:.85rem}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid #2c2c34;white-space:nowrap}
+.wl{color:#ff6b6b}
+</style></head><body>
+<h2>🔥 Registrations</h2>
+<div id="login"><input id="pw" type="password" placeholder="Admin password"> <button id="go">Login</button></div>
+<div id="panel" style="display:none">
+  <button id="csv">CSV download</button> <span id="count"></span>
+  <div class="wrap"><table><thead><tr><th>Slot</th><th>Team</th><th>Leader</th><th>Verified</th><th>UID</th><th>WhatsApp</th><th>Players</th><th>Time</th></tr></thead><tbody id="rows"></tbody></table></div>
+</div>
+<script>
+let data=[], max=12;
+document.getElementById('go').onclick = load;
+async function load(){
+  const r = await fetch('/api/admin',{headers:{'x-admin-password':document.getElementById('pw').value}});
+  if(!r.ok){ alert('Galat password'); return; }
+  const d = await r.json(); data=d.registrations; max=d.max;
+  document.getElementById('login').style.display='none';
+  document.getElementById('panel').style.display='block';
+  document.getElementById('count').textContent = data.length+' / '+max+' teams';
+  const tb=document.getElementById('rows'); tb.innerHTML='';
+  data.forEach(x=>{
+    const tr=document.createElement('tr'); if(x.slot>max) tr.className='wl';
+    [x.slot,x.team,x.leader,x.verified?'✅':'-',x.uid,x.phone,(x.others||'').replace(/\n/g,', '),new Date(x.createdAt).toLocaleString()]
+      .forEach(v=>{const td=document.createElement('td'); td.textContent=v; tr.appendChild(td);});
+    tb.appendChild(tr);
+  });
+}
+document.getElementById('csv').onclick = () => {
+  const q=s=>'"'+String(s||'').replace(/"/g,'""').replace(/\n/g,' | ')+'"';
+  const rows=['Slot,Team,Leader,UID,WhatsApp,Players,Time'].concat(data.map(x=>[x.slot,x.team,x.leader,x.uid,x.phone,x.others,x.createdAt].map(q).join(',')));
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([rows.join('\n')],{type:'text/csv'}));
+  a.download='registrations.csv'; a.click();
+};
+</script></body></html>
